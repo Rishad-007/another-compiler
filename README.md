@@ -2,6 +2,28 @@
 
 A basic compiler implementation using Flex (lexical analyzer) and Bison (parser) that can handle arithmetic operations, if-else statements, and for loops. The compiler reads input from a file and generates three-address code as an intermediate representation.
 
+## Author
+
+**MD. Rishad Nur**  
+Department of Computer Science and Engineering  
+Begum Rokeya University, Rangpur (BRUR)
+
+Contact:
+
+- Email: rishad.nur007@gmail.com
+- Facebook: [www.facebook.com/rishad.nur](https://www.facebook.com/rishad.nur)
+
+## License and Usage Rights
+
+This project is completely free and open for anyone to use, modify, and redistribute under the MIT License. You are welcome to:
+
+- Use this code in your projects (commercial or non-commercial)
+- Modify and adapt the code to your needs
+- Share and distribute the code
+- Use it for educational purposes
+
+The only requirement is to include the copyright notice and the MIT license text in any substantial portions of the code that you use.
+
 ## Features
 
 - Lexical analysis using Flex
