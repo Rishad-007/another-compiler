@@ -121,8 +121,8 @@ int symbol_count = 0;
 ThreeAddressCode* code_head = NULL;
 int temp_var_counter = 0;
 int label_counter = 0;
-int if_flag = 1;  // Flag to control if-else execution
-int loop_depth = 0;  // Track nested loops
+int in_true_block = 0;  // Track if we're in the true block
+int in_else_block = 0;  // Track if we're in the else block
 
 void yyerror(const char* s);
 char* new_label();
@@ -466,9 +466,9 @@ static const yytype_int8 yyrhs[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,    36,    36,    39,    40,    43,    47,    48,    49,    57,
-      57,    65,    67,    65,    80,    80,   113,   119,   123,   128,
-     133,   138,   143,   148,   153,   158
+       0,    36,    36,    39,    40,    43,    47,    48,    49,    58,
+      58,    75,    83,    75,   100,   100,   133,   139,   143,   148,
+     153,   158,   163,   168,   173,   178
 };
 #endif
 
@@ -1436,7 +1436,8 @@ yyreduce:
   case 8:
 #line 49 "parser.y"
     {
-        if (if_flag) {  // Only print if we're in the correct branch
+        // Only print if we're in the correct block
+        if ((in_true_block && !in_else_block) || (!in_true_block && in_else_block)) {
             printf("%d\n", (yyvsp[(3) - (5)].expr).value);
         }
         add_three_address_code("printf", (yyvsp[(3) - (5)].expr).addr, "", "");
@@ -1444,51 +1445,70 @@ yyreduce:
     break;
 
   case 9:
-#line 57 "parser.y"
+#line 58 "parser.y"
     {
-        if_flag = (yyvsp[(3) - (4)].expr).value;  // Set flag based on condition
+        char* false_label = new_label();
+        char* end_label = new_label();
+        (yyval.expr).addr = false_label;  // Store labels for later use
+        (yyval.expr).value = (yyvsp[(3) - (4)].expr).value;
+        add_three_address_code("if", (yyvsp[(3) - (4)].expr).addr, "", "");
+        add_three_address_code("ifFalse", (yyvsp[(3) - (4)].expr).addr, false_label, "");
+        in_true_block = ((yyvsp[(3) - (4)].expr).value != 0);  // Enter true block if condition is true
     ;}
     break;
 
   case 10:
-#line 59 "parser.y"
+#line 66 "parser.y"
     {
-        char* false_label = new_label();
-        add_three_address_code("ifFalse", (yyvsp[(3) - (8)].expr).addr, false_label, "");
+        char* false_label = (yyvsp[(5) - (8)].expr).addr;  // Retrieve stored label
+        char* end_label = new_label();
+        add_three_address_code("goto", "", "", end_label);
         add_three_address_code("label", "", "", false_label);
-        if_flag = 1;  // Reset flag
+        add_three_address_code("endif", "", "", "");
+        add_three_address_code("label", "", "", end_label);
+        in_true_block = 0;  // Exit true block
     ;}
     break;
 
   case 11:
-#line 65 "parser.y"
+#line 75 "parser.y"
     {
-        if_flag = (yyvsp[(3) - (4)].expr).value;  // Set flag for if block
+        char* else_label = new_label();
+        char* end_label = new_label();
+        (yyval.expr).addr = else_label;  // Store labels for later use
+        (yyval.expr).value = (yyvsp[(3) - (4)].expr).value;
+        add_three_address_code("if", (yyvsp[(3) - (4)].expr).addr, "", "");
+        add_three_address_code("ifFalse", (yyvsp[(3) - (4)].expr).addr, else_label, "");
+        in_true_block = ((yyvsp[(3) - (4)].expr).value != 0);  // Enter true block if condition is true
     ;}
     break;
 
   case 12:
-#line 67 "parser.y"
+#line 83 "parser.y"
     {
-        if_flag = !if_flag;  // Invert flag for else block
+        char* else_label = (yyvsp[(5) - (9)].expr).addr;  // Retrieve stored label
+        char* end_label = new_label();
+        (yyval.expr).addr = end_label;  // Store end label for later use
+        add_three_address_code("goto", "", "", end_label);
+        add_three_address_code("label", "", "", else_label);
+        add_three_address_code("else", "", "", "");
+        in_true_block = 0;  // Exit true block
+        in_else_block = 1;  // Enter else block
     ;}
     break;
 
   case 13:
-#line 69 "parser.y"
+#line 92 "parser.y"
     {
-        char* else_label = new_label();
-        char* end_label = new_label();
-        add_three_address_code("ifFalse", (yyvsp[(3) - (13)].expr).addr, else_label, "");
-        add_three_address_code("goto", "", "", end_label);
-        add_three_address_code("label", "", "", else_label);
+        char* end_label = (yyvsp[(9) - (13)].expr).addr;  // Retrieve stored end label
         add_three_address_code("label", "", "", end_label);
-        if_flag = 1;  // Reset flag
+        add_three_address_code("endif", "", "", "");
+        in_else_block = 0;  // Exit else block
     ;}
     break;
 
   case 14:
-#line 80 "parser.y"
+#line 100 "parser.y"
     {
         loop_depth++;  // Enter loop
         set_symbol_value((yyvsp[(3) - (12)].id), (yyvsp[(5) - (12)].expr).value);  // Initialize loop variable
@@ -1509,7 +1529,7 @@ yyreduce:
     break;
 
   case 15:
-#line 96 "parser.y"
+#line 116 "parser.y"
     {
         char* start_label = (yyvsp[(12) - (16)].expr).addr;
         char* end_label = new_label();
@@ -1528,7 +1548,7 @@ yyreduce:
     break;
 
   case 16:
-#line 113 "parser.y"
+#line 133 "parser.y"
     {
         char temp[20];
         sprintf(temp, "%d", (yyvsp[(1) - (1)].num));
@@ -1538,7 +1558,7 @@ yyreduce:
     break;
 
   case 17:
-#line 119 "parser.y"
+#line 139 "parser.y"
     {
         (yyval.expr).addr = (yyvsp[(1) - (1)].id);
         (yyval.expr).value = get_symbol_value((yyvsp[(1) - (1)].id));
@@ -1546,7 +1566,7 @@ yyreduce:
     break;
 
   case 18:
-#line 123 "parser.y"
+#line 143 "parser.y"
     {
         (yyval.expr).addr = new_temp_var();
         (yyval.expr).value = (yyvsp[(1) - (3)].expr).value + (yyvsp[(3) - (3)].expr).value;
@@ -1555,7 +1575,7 @@ yyreduce:
     break;
 
   case 19:
-#line 128 "parser.y"
+#line 148 "parser.y"
     {
         (yyval.expr).addr = new_temp_var();
         (yyval.expr).value = (yyvsp[(1) - (3)].expr).value - (yyvsp[(3) - (3)].expr).value;
@@ -1564,7 +1584,7 @@ yyreduce:
     break;
 
   case 20:
-#line 133 "parser.y"
+#line 153 "parser.y"
     {
         (yyval.expr).addr = new_temp_var();
         (yyval.expr).value = (yyvsp[(1) - (3)].expr).value * (yyvsp[(3) - (3)].expr).value;
@@ -1573,7 +1593,7 @@ yyreduce:
     break;
 
   case 21:
-#line 138 "parser.y"
+#line 158 "parser.y"
     {
         (yyval.expr).addr = new_temp_var();
         (yyval.expr).value = (yyvsp[(1) - (3)].expr).value / (yyvsp[(3) - (3)].expr).value;
@@ -1582,7 +1602,7 @@ yyreduce:
     break;
 
   case 22:
-#line 143 "parser.y"
+#line 163 "parser.y"
     {
         (yyval.expr).addr = new_temp_var();
         (yyval.expr).value = (yyvsp[(1) - (3)].expr).value < (yyvsp[(3) - (3)].expr).value;
@@ -1591,7 +1611,7 @@ yyreduce:
     break;
 
   case 23:
-#line 148 "parser.y"
+#line 168 "parser.y"
     {
         (yyval.expr).addr = new_temp_var();
         (yyval.expr).value = (yyvsp[(1) - (3)].expr).value > (yyvsp[(3) - (3)].expr).value;
@@ -1600,7 +1620,7 @@ yyreduce:
     break;
 
   case 24:
-#line 153 "parser.y"
+#line 173 "parser.y"
     {
         (yyval.expr).addr = new_temp_var();
         (yyval.expr).value = (yyvsp[(1) - (3)].expr).value == (yyvsp[(3) - (3)].expr).value;
@@ -1609,7 +1629,7 @@ yyreduce:
     break;
 
   case 25:
-#line 158 "parser.y"
+#line 178 "parser.y"
     {
         (yyval.expr).addr = (yyvsp[(2) - (3)].expr).addr;
         (yyval.expr).value = (yyvsp[(2) - (3)].expr).value;
@@ -1618,7 +1638,7 @@ yyreduce:
 
 
 /* Line 1267 of yacc.c.  */
-#line 1622 "parser.tab.c"
+#line 1642 "parser.tab.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -1832,7 +1852,7 @@ yyreturn:
 }
 
 
-#line 164 "parser.y"
+#line 184 "parser.y"
 
 
 void yyerror(const char* s) {

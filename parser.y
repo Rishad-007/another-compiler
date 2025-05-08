@@ -6,8 +6,8 @@ int symbol_count = 0;
 ThreeAddressCode* code_head = NULL;
 int temp_var_counter = 0;
 int label_counter = 0;
-int if_flag = 1;  // Flag to control if-else execution
-int loop_depth = 0;  // Track nested loops
+int in_true_block = 0;  // Track if we're in the true block
+int in_else_block = 0;  // Track if we're in the else block
 
 void yyerror(const char* s);
 char* new_label();
@@ -47,7 +47,8 @@ stmt: ID ASSIGN expr SEMICOLON {
     | if_stmt
     | for_stmt
     | PRINTF LPAREN expr RPAREN SEMICOLON {
-        if (if_flag) {  // Only print if we're in the correct branch
+        // Only print if we're in the correct block
+        if ((in_true_block && !in_else_block) || (!in_true_block && in_else_block)) {
             printf("%d\n", $3.value);
         }
         add_three_address_code("printf", $3.addr, "", "");
@@ -55,25 +56,44 @@ stmt: ID ASSIGN expr SEMICOLON {
     ;
 
 if_stmt: IF LPAREN expr RPAREN {
-        if_flag = $3.value;  // Set flag based on condition
-    } LBRACE stmt_list RBRACE {
         char* false_label = new_label();
+        char* end_label = new_label();
+        $<expr>$.addr = false_label;  // Store labels for later use
+        $<expr>$.value = $3.value;
+        add_three_address_code("if", $3.addr, "", "");
         add_three_address_code("ifFalse", $3.addr, false_label, "");
+        in_true_block = ($3.value != 0);  // Enter true block if condition is true
+    } LBRACE stmt_list RBRACE {
+        char* false_label = $<expr>5.addr;  // Retrieve stored label
+        char* end_label = new_label();
+        add_three_address_code("goto", "", "", end_label);
         add_three_address_code("label", "", "", false_label);
-        if_flag = 1;  // Reset flag
+        add_three_address_code("endif", "", "", "");
+        add_three_address_code("label", "", "", end_label);
+        in_true_block = 0;  // Exit true block
     }
     | IF LPAREN expr RPAREN {
-        if_flag = $3.value;  // Set flag for if block
-    } LBRACE stmt_list RBRACE ELSE {
-        if_flag = !if_flag;  // Invert flag for else block
-    } LBRACE stmt_list RBRACE {
         char* else_label = new_label();
         char* end_label = new_label();
+        $<expr>$.addr = else_label;  // Store labels for later use
+        $<expr>$.value = $3.value;
+        add_three_address_code("if", $3.addr, "", "");
         add_three_address_code("ifFalse", $3.addr, else_label, "");
+        in_true_block = ($3.value != 0);  // Enter true block if condition is true
+    } LBRACE stmt_list RBRACE ELSE {
+        char* else_label = $<expr>5.addr;  // Retrieve stored label
+        char* end_label = new_label();
+        $<expr>$.addr = end_label;  // Store end label for later use
         add_three_address_code("goto", "", "", end_label);
         add_three_address_code("label", "", "", else_label);
+        add_three_address_code("else", "", "", "");
+        in_true_block = 0;  // Exit true block
+        in_else_block = 1;  // Enter else block
+    } LBRACE stmt_list RBRACE {
+        char* end_label = $<expr>9.addr;  // Retrieve stored end label
         add_three_address_code("label", "", "", end_label);
-        if_flag = 1;  // Reset flag
+        add_three_address_code("endif", "", "", "");
+        in_else_block = 0;  // Exit else block
     }
     ;
 

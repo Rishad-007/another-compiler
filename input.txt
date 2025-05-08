@@ -1,11 +1,6 @@
-z=10;
-Printf(z);
-if (z > 20) {
-    Printf(z - 5);
+x = 2;
+if(x > 3) {
+    Printf(10);
 } else {
-    Printf(z + 5);
-}
-
-for (i = 0; i < 5; i = i + 1) {
-    Printf(i);
+    Printf(20);
 }

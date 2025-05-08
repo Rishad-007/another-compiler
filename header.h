@@ -36,8 +36,8 @@ extern Symbol symbols[100];
 extern int symbol_count;
 extern ThreeAddressCode* code_head;
 extern int temp_var_counter;
-extern int if_flag;  // Flag for controlling if-else execution
-extern int loop_depth;  // Track loop nesting level
+extern int if_flag;
+extern int loop_depth;  // Added extern declaration for loop_depth
 
 // Function declarations
 char* new_temp_var();
